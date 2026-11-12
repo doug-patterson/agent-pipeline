@@ -1,0 +1,13 @@
+{
+  "name": "agent-pipeline",
+  "description": "Single-plugin marketplace for agent-pipeline.",
+  "owner": { "name": "Doug Patterson", "url": "https://github.com/doug-patterson" },
+  "plugins": [
+    {
+      "name": "agent-pipeline",
+      "source": "./",
+      "description": "Plan → debate → failing tests → implement → review → PR, with separate models per stage.",
+      "category": "development"
+    }
+  ]
+}

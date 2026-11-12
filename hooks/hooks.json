@@ -1,0 +1,17 @@
+{
+  "description": "agent-pipeline: stop the implementer subagent from editing test files.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Edit|Write|MultiEdit|NotebookEdit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-tests.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

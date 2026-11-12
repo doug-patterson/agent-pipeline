@@ -1,0 +1,11 @@
+{
+  "name": "agent-pipeline",
+  "displayName": "Agent Pipeline",
+  "version": "0.1.0",
+  "description": "One command from feature request to PR: stack detection, planning, design debate, tests-first with one model, implementation with another (barred from editing tests), independent review.",
+  "author": { "name": "Doug Patterson", "url": "https://github.com/doug-patterson" },
+  "homepage": "https://github.com/doug-patterson/agent-pipeline",
+  "repository": "https://github.com/doug-patterson/agent-pipeline",
+  "license": "MIT",
+  "keywords": ["tdd", "multi-agent", "subagents", "workflow", "pull-request"]
+}
