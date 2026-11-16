@@ -1,7 +1,7 @@
 {
   "name": "agent-pipeline",
   "displayName": "Agent Pipeline",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "One command from feature request to PR: stack detection, planning, property discovery, design debate, tests-first with one model, implementation with another (barred from editing tests), mutation check, independent review.",
   "author": { "name": "Doug Patterson", "url": "https://github.com/doug-patterson" },
   "homepage": "https://github.com/doug-patterson/agent-pipeline",

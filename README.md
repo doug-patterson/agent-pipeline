@@ -49,13 +49,15 @@ Put flags anywhere in the request. Combine them freely.
 | `--fast` | Skips the design debate (advocates and judge) and uses the planner's recommended option. Also skips the blind `property-finder`; the planner's own property pass and the mutation check still run. | The design is obvious, or the change is small. |
 | `--auto` | Doesn't stop to confirm the plan's assumptions. Properties that need a product decision become open gaps instead of tests. | You trust the request as written, or you're running unattended. |
 | `--no-properties` | Skips property discovery, property tests, the mutation check and the `INVARIANTS.md` update. Existing invariants are still read and reviewed against. | Wording, styling or config changes with no logic. (The planner also exempts these on its own.) |
-| `--no-pr` | Stops at a committed branch and prints the PR description instead of pushing. | You want to look before anything leaves your machine. |
+| `--draft` | Pushes the branch and opens the PR as a draft. Without it, the PR is opened ready for review. | You want CI to run and teammates to see the work before it asks for review. |
+| `--no-pr` | Stops at a committed local branch and prints the PR description. Nothing is pushed. Takes precedence over `--draft`. | You want to look before anything leaves your machine. |
 
 Examples:
 
 ```
 /agent-pipeline:pipeline --fast fix the off-by-one in pagination on /orders
 /agent-pipeline:pipeline --spec ENG-123 --no-pr
+/agent-pipeline:pipeline --spec ENG-123 --draft
 /agent-pipeline:pipeline --auto --no-properties update the footer copyright year
 ```
 

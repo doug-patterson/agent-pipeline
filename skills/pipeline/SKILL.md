@@ -1,7 +1,7 @@
 ---
 name: pipeline
 description: Run the full agent pipeline on a feature request in the current repo. Detect the stack, plan, find properties and invariants, debate designs, write failing tests (one model), implement (another model, barred from editing tests), mutation-check the tests, review, and open a PR. Optionally grounded in a PRD or Linear issue via --spec.
-argument-hint: "<feature request> [--spec <path|url|LINEAR-ID>]... [--fast] [--auto] [--no-properties] [--no-pr]"
+argument-hint: "<feature request> [--spec <path|url|LINEAR-ID>]... [--fast] [--auto] [--no-properties] [--draft] [--no-pr]"
 disable-model-invocation: true
 ---
 # Agent pipeline
@@ -18,7 +18,8 @@ Flags in the request (strip them from the request text):
 - `--fast`: skip the design debate and use the planner's recommended option, and skip the blind `property-finder`. The planner's own property pass and the mutation check still run.
 - `--auto`: don't pause for the user to confirm the plan's assumptions. Properties marked **ask** become open gaps instead of tests.
 - `--no-properties`: skip property discovery, property tests, the mutation check and the INVARIANTS.md update. Existing invariants are still read and reviewed against.
-- `--no-pr`: stop at a committed branch and print the PR description.
+- `--draft`: push the branch and open the PR as a draft instead of ready for review.
+- `--no-pr`: stop at a committed local branch and print the PR description. Nothing is pushed. If both `--no-pr` and `--draft` are given, `--no-pr` wins.
 
 You are the orchestrator. Delegate each stage to the plugin subagent named below (subagent types `agent-pipeline:<name>`). Give each subagent a complete brief, because it sees nothing of this conversation; it sees only files and its own tools. Verify each stage's result yourself before moving on; a subagent's report is not evidence. Keep the user informed with one short line per stage. Paths below are relative to the repo root, and `.claude/pipeline/` holds the working files.
 
@@ -123,8 +124,8 @@ Spawn `agent-pipeline:planner` with the request and the config path. Tell it whe
    - Assumptions made
 
    `.claude/pipeline/` is not committed, so the PR body is where the plan, ADR and traceability live. Link the specs; don't paste their full text into the PR.
-2. If `--no-pr`, or there's no remote, or `gh` isn't installed or authenticated: print the branch name and the PR body, and stop.
-3. Otherwise: `git push -u <remote> HEAD`, then `gh pr create --base <default_branch> --title "<conventional title>" --body-file <tmp file>`. Report the PR URL.
+2. If `--no-pr`, or there's no remote, or `gh` isn't installed or authenticated: print the branch name and the PR body, and stop. Don't push.
+3. Otherwise: `git push -u <remote> HEAD`, then `gh pr create --base <default_branch> --title "<conventional title>" --body-file <tmp file>`, adding `--draft` if the `--draft` flag was given. Without `--draft`, the PR is opened ready for review. If the repo doesn't allow drafts (GitHub returns an error saying so), don't fall back to a ready PR on your own: report the error and the branch, and stop. Report the PR URL, and whether it is a draft.
 
 ## Final report
 End with a short table: stage → outcome (specs saved, properties by decision, option chosen, tests added, red→green counts, mutations caught/total, spec requirements covered/total, invariants added, review verdict, PR URL or branch). Say plainly anything skipped, unverified or still failing.
