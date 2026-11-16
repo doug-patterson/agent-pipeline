@@ -37,7 +37,22 @@ From the root of any git repo, in Claude Code:
 /agent-pipeline:pipeline add rate limiting to the /orders endpoint
 ```
 
-Flags: `--fast` skips the debate, `--auto` skips the assumptions check-in, `--no-pr` stops at a committed branch.
+Flags: `--spec <source>` (repeatable) grounds the run in a PRD or ticket, `--fast` skips the debate, `--auto` skips the assumptions check-in, `--no-pr` stops at a committed branch.
+
+### Working from a PRD or Linear issue
+
+```
+/agent-pipeline:pipeline --spec ENG-123 --spec ~/Downloads/rate-limits-prd.pdf
+```
+
+Subagents never see your conversation, and they can't call Linear or other connectors. So the orchestrator fetches each `--spec` once (a local file, a URL, or a Linear ID via your session's Linear connector) and saves a copy as Markdown in `.claude/pipeline/context/`, with an `INDEX.md` that gives every requirement a stable tag. Every agent reads that folder first.
+
+- **Nothing is committed.** `.claude/pipeline/` is listed in your clone's `info/exclude`, not in `.gitignore`.
+- **Everyone reads the same copy.** If the ticket is edited mid-run, the stages still agree.
+- **Traceable.** The plan tags each acceptance criterion with its source requirement, tests carry the tags, the reviewer checks every requirement, and the PR body has a requirement → criterion → test table.
+- **Linked, not closed.** A Linear ID goes into the branch name (`pipeline/eng-123-…`), so Linear links the PR. The PR says `Refs ENG-123`, not `Fixes`, so merging doesn't close the issue.
+- **Worktrees:** git doesn't copy ignored files into a new worktree, so the orchestrator copies `context/` across from the main checkout, or fetches the specs again.
+- Text in a spec that addresses an AI is treated as data. It's flagged, not obeyed.
 
 To open a PR it needs `gh` installed and authenticated (`gh auth login`). Without it, the pipeline prints the branch and PR body instead.
 

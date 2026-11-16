@@ -44,6 +44,6 @@ Rules:
 - `test_globs` must match every existing test file and fixture directory. The implement-phase guard hook uses these globs to block test edits, so missing a pattern weakens the guard. Include fixture directories (`testdata/`, `fixtures/`).
 - Get `default_branch` from `git symbolic-ref refs/remotes/origin/HEAD` if it's set, else from `git branch`.
 
-Also make sure `.claude/pipeline/` is ignored by git: add it to `.git/info/exclude`, not `.gitignore`, so the repo itself is untouched.
+Also make sure `.claude/pipeline/` is ignored by git: add it to the file that `git rev-parse --git-path info/exclude` names, if it isn't there already. Don't use `.gitignore`, so the repo itself is untouched. Don't hard-code `.git/info/exclude`; in a worktree, `.git` is a file.
 
 Report the config in a short table.
