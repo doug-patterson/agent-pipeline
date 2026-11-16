@@ -32,6 +32,7 @@ Run the test command once to confirm it works and record the baseline (passing, 
   "lint": "pnpm lint",
   "typecheck": "pnpm tsc --noEmit",
   "test_globs": ["**/*.test.ts", "**/*.spec.ts", "**/__tests__/**", "tests/**", "test/**"],
+  "property_lib": "fast-check",
   "default_branch": "main",
   "remote": "origin",
   "baseline": "312 passed, 0 failed",
@@ -42,6 +43,7 @@ Run the test command once to confirm it works and record the baseline (passing, 
 Rules:
 - Use `null` for any command that doesn't exist. Never invent one.
 - `test_globs` must match every existing test file and fixture directory. The implement-phase guard hook uses these globs to block test edits, so missing a pattern weakens the guard. Include fixture directories (`testdata/`, `fixtures/`).
+- `property_lib` is the property-based testing library the repo already depends on (fast-check, Hypothesis, proptest, quickcheck, jqwik, rapid, gopter, …), or `null`. Look in the manifests and lockfiles; don't install one.
 - Get `default_branch` from `git symbolic-ref refs/remotes/origin/HEAD` if it's set, else from `git branch`.
 
 Also make sure `.claude/pipeline/` is ignored by git: add it to the file that `git rev-parse --git-path info/exclude` names, if it isn't there already. Don't use `.gitignore`, so the repo itself is untouched. Don't hard-code `.git/info/exclude`; in a worktree, `.git` is a file.

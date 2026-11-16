@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PreToolUse guard: the agent-pipeline implementer may not edit test files.
+# PreToolUse guard: the agent-pipeline implementer and mutator may not edit test files.
 # Exit 0 = allow. Exit 2 + stderr = block (Claude sees the reason).
 # Works with bash 3.2 (stock macOS). Parses JSON with jq, falling back to python3.
 
@@ -29,13 +29,14 @@ if [ $? -ne 0 ]; then
   # No JSON parser: fall back to a plain text match on the agent identity.
   case "$input" in
     *'"agent_type"'*implementer*) agent_type="implementer" ;;
+    *'"agent_type"'*mutator*) agent_type="mutator" ;;
     *) exit 0 ;;
   esac
 fi
 
-# Only the implementer is restricted. Plugin agents arrive as "agent-pipeline:implementer".
+# Only the implementer and mutator are restricted. Plugin agents arrive as "agent-pipeline:<name>".
 case "$agent_type" in
-  implementer|*:implementer) ;;
+  implementer|*:implementer|mutator|*:mutator) ;;
   *) exit 0 ;;
 esac
 
@@ -99,7 +100,7 @@ for g in $globs; do
   IFS="$old_ifs"
   [ -z "$g" ] && continue
   if matches "$rel" "$g"; then
-    echo "agent-pipeline: the implementer may not edit test files ($rel matches '$g'). Tests are the spec. If a test is wrong, stop and report it to the orchestrator with the reason and the proposed change." >&2
+    echo "agent-pipeline: the $agent_type may not edit test files ($rel matches '$g'). Tests are the spec. If a test is wrong, stop and report it to the orchestrator with the reason and the proposed change." >&2
     exit 2
   fi
 done

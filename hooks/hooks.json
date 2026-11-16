@@ -1,5 +1,5 @@
 {
-  "description": "agent-pipeline: stop the implementer subagent from editing test files.",
+  "description": "agent-pipeline: stop the implementer and mutator subagents from editing test files.",
   "hooks": {
     "PreToolUse": [
       {
