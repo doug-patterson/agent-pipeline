@@ -1,7 +1,7 @@
 {
   "name": "agent-pipeline",
   "displayName": "Agent Pipeline",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "One command from feature request to mergeable PR: stack detection, planning, property discovery, design debate, tests-first with one model plus held-out tests, implementation with another (barred from editing tests or switching checks off), mutation check, running-system evaluation, verified independent and red-team review, a PR in the repo's own format, then CI and review-bot follow-through until it's mergeable. Resumable.",
   "author": { "name": "Doug Patterson", "url": "https://github.com/doug-patterson" },
   "homepage": "https://github.com/doug-patterson/agent-pipeline",

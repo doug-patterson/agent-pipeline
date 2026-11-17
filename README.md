@@ -25,7 +25,7 @@ detect-stack → planner → property-finder → advocates ×N ∥ → judge →
 - **No bypassed checks.** A second hook stops pipeline runs from skipping git hooks (`--no-verify`, `core.hooksPath`, `HUSKY=0`, …). If a hook fails, the pipeline fixes the cause.
 - **Only the planned change ships.** Preflight warns if the branch already carries commits, and before the PR the pipeline checks the diff against the plan's affected files.
 - **Ships a PR in the repo's own format.** The body follows the repo's PR template, the commits follow its commit convention, and the repo's written PR rules are checked; the plan, ADR and traceability tables go in a pipeline report at the end.
-- **Lands it.** After opening the PR, the pipeline watches CI, fixes failures the branch caused, re-runs flakes once, merges the default branch in on conflicts, and answers review bots, until the PR is mergeable. It never merges, approves or resolves a person's thread. See [Landing the PR](#landing-the-pr).
+- **Lands it.** After opening the PR, the pipeline watches CI, fixes failures the branch caused, re-runs flakes once, merges the target branch in on conflicts, and answers review bots, until the PR is mergeable. It never merges, approves or resolves a person's thread. See [Landing the PR](#landing-the-pr).
 - **Resumable, and stops when it stops improving.** Run state is saved after every stage, so `--resume` continues a run after a crash or a closed session. Every fix loop stops early when a round doesn't reduce what's failing.
 
 ## Install
@@ -62,6 +62,7 @@ Put flags anywhere in the request. Combine them freely.
 | `--auto` | Never stops for you. Doesn't confirm the plan's assumptions (properties that need a product decision become open gaps instead of tests); runs in a new worktree if your checkout has uncommitted changes; has the judge rule on disputed tests; keeps prior commits and reverts its own out-of-plan edits. Anything it couldn't settle goes under "Needs a human" at the top of the PR. | You trust the request as written, or you're running unattended. |
 | `--no-properties` | Skips property discovery, property tests, the mutation check and the `INVARIANTS.md` update. Existing invariants are still read and reviewed against. | Wording, styling or config changes with no logic. (The planner also exempts these on its own.) |
 | `--no-eval` | Skips exercising the running system. | The app can't run locally, or the change has no runtime surface. (Libraries skip it on their own.) |
+| `--base <branch>` | Starts the run from the tip of `<branch>` and opens the PR against it, instead of the default branch. The branch must already exist; to open a PR it must be on the remote. | Targeting a release branch, or stacking on another feature branch. |
 | `--draft` | Pushes the branch and opens the PR as a draft. Without it, the PR is opened ready for review. | You want CI to run and teammates to see the work before it asks for review. |
 | `--no-pr` | Stops at a committed local branch and prints the PR description. Nothing is pushed. Takes precedence over `--draft`, and implies `--no-land`. | You want to look before anything leaves your machine. |
 | `--no-land` | Stops once the PR is open, without watching CI or answering review bots. | You'd rather drive the PR yourself, or the repo has another bot doing it. |
@@ -73,6 +74,7 @@ Examples:
 /agent-pipeline:pipeline --fast fix the off-by-one in pagination on /orders
 /agent-pipeline:pipeline --spec ENG-123 --no-pr
 /agent-pipeline:pipeline --spec ENG-123 --draft
+/agent-pipeline:pipeline --base release/2.4 backport the /orders rate-limit fix
 /agent-pipeline:pipeline --auto --no-properties update the footer copyright year
 ```
 
@@ -153,8 +155,8 @@ Tests are written by the same pipeline as the code, so they can share its blind 
 
 Opening a PR is not the same as getting it merged. After `gh pr create`, the pipeline repeats until the PR is mergeable, it stops making progress, or 4 rounds pass:
 
-1. **CI.** It waits for the checks. For each failure it reads the log and decides whether the branch caused it (reproduce locally, fix through the stage that owns the file, push), the default branch already fails it (listed for you, not fixed), or it's a flake (re-run once).
-2. **Conflicts.** It merges the default branch in, resolving through the implementer and test-writer and regenerating lockfiles with the repo's own commands. It never rebases or force-pushes a pushed branch.
+1. **CI.** It waits for the checks. For each failure it reads the log and decides whether the branch caused it (reproduce locally, fix through the stage that owns the file, push), the target branch already fails it (listed for you, not fixed), or it's a flake (re-run once).
+2. **Conflicts.** It merges the target branch (the default branch, or `--base`) in, resolving through the implementer and test-writer and regenerating lockfiles with the repo's own commands. It never rebases or force-pushes a pushed branch.
 3. **Review comments.** Comments from review bots are verified like any finding, fixed if confirmed, and answered in their thread with the fixing commit or the evidence. A person's request for a specific change is handled the same way; a person's question or design point is left for you.
 
 It never merges, enables auto-merge, approves, dismisses a review or resolves a person's thread. The final report says whether the PR is mergeable and what it's waiting on.
@@ -166,8 +168,8 @@ After each stage, the orchestrator writes `.claude/pipeline/runs/<slug>.json` (i
 ### Branch hygiene
 
 - **Uncommitted changes** in your checkout are never stashed or discarded. You're asked whether to build on them, run in a new worktree, or stop; with `--auto` the run moves to a new worktree.
-- **Preflight** checks whether HEAD is the default branch tip. If not, it lists the commits that would ride along and asks whether to start from the default branch instead (with `--auto`, it keeps them and warns).
-- **Before the PR**, it compares every file in the diff against the default branch with the plan's "Affected code", asks about anything outside it, and lists what stays under "Changes outside the plan" in the PR body.
+- **Preflight** checks whether HEAD is the default branch tip. If not, it lists the commits that would ride along and asks whether to start from the default branch instead (with `--auto`, it keeps them and warns). With `--base`, the run starts from that branch's tip instead, so nothing from HEAD rides along.
+- **Before the PR**, it compares every file in the diff against the target branch (the default branch, or `--base`) with the plan's "Affected code", asks about anything outside it, and lists what stays under "Changes outside the plan" in the PR body.
 - **Hooks are never skipped.** The `guard-git.sh` hook blocks `--no-verify`, `git commit -n`, `core.hooksPath` overrides and `HUSKY=0`/`SKIP=` on commit or push, for pipeline subagents and for the main session while it's on a `pipeline/*` branch. If you really need to bypass a hook, run the command yourself in a terminal.
 
 To open a PR it needs `gh` installed and authenticated (`gh auth login`). Without it, the pipeline prints the branch and PR body instead.
