@@ -8,9 +8,14 @@ This file lives in `.claude/pipeline/verification/`, which git ignores in this c
 - **Only a human removes a row or weakens its statement.** The pipeline proposes such a change in its final report instead of making it.
 - A row with no test is a gap. List it under "Open gaps".
 - A row the current code breaks is marked **BROKEN**, with the test that shows it.
+- A rule the code can't enforce on its own, because a caller owns it, goes under "Obligations on callers", with the doc comment that states it.
 
 | ID | Invariant (for all inputs and sequences…) | Source | Guarded by |
 |---|---|---|---|
 
 ## Open gaps
 
+## Obligations on callers
+
+| ID | Obligation (every caller of … must …) | Applies to | Stated in |
+|---|---|---|---|

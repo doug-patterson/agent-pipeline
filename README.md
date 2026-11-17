@@ -5,6 +5,7 @@ A Claude Code plugin that takes a one-line feature request to a reviewed pull re
 ```
 detect-stack → planner → property-finder → advocates ×N ∥ → judge → test-writer (red) → implementer (green) → mutator → reviewer ⟲ → PR
                (opus)    (sonnet)          (sonnet)         (opus)  (opus)              (sonnet)              (sonnet)  (opus)
+                                                                                                                         ∥ security-reviewer (opus, security-sensitive changes)
 ```
 
 - **Works on any repo.** `detect-stack` reads manifests, CI config and docs to find the real test, lint and typecheck commands, and writes them to `.claude/pipeline/config.json`. That folder is git-excluded, so the repo stays untouched.
@@ -13,7 +14,10 @@ detect-stack → planner → property-finder → advocates ×N ∥ → judge →
 - **Enforced, not requested.** A `PreToolUse` hook blocks the implementer from editing any test file. If it thinks a test is wrong, it has to stop and say why.
 - **Properties, not just examples.** The planner and a blind second agent list what must *always* hold (round-trips, nothing lost, rejected means no effect, …), and the test-writer encodes those as property-based tests.
 - **Tests that can fail.** After green, a mutator breaks the code once per criterion and property and checks that a test catches it.
-- **Independent review** by a model that didn't write the code, for up to two fix rounds.
+- **Independent review** by a model that didn't write the code, for up to two fix rounds. Every finding except a cosmetic nit gets fixed, not just the must-fixes.
+- **Security-sensitive changes get more.** The planner tags changes to auth, crypto, secrets, money, identity verification or permissions. Those runs add hostile-input properties, a red-team `security-reviewer`, and stricter review. See [Security-sensitive changes](#security-sensitive-changes).
+- **No bypassed checks.** A second hook stops pipeline runs from skipping git hooks (`--no-verify`, `core.hooksPath`, `HUSKY=0`, …). If a hook fails, the pipeline fixes the cause.
+- **Only the planned change ships.** Preflight warns if the branch already carries commits, and before the PR the pipeline checks the diff against the plan's affected files.
 - **Ships a PR** with the plan, the ADR and a criterion → test table in the body.
 
 ## Install
@@ -46,7 +50,7 @@ Put flags anywhere in the request. Combine them freely.
 | Flag | What it does | Use it when |
 |---|---|---|
 | `--spec <source>` | Grounds the run in a requirements source: a local file (PRD, design doc, exported ticket; PDF and DOCX are converted), a URL, or a Linear issue ID or URL. Repeat it for several sources. The request text can then be empty. See [Working from a PRD or Linear issue](#working-from-a-prd-or-linear-issue). | The work comes from a ticket or PRD. Prefer this to pasting the text into chat, because subagents never see the conversation. |
-| `--fast` | Skips the design debate (advocates and judge) and uses the planner's recommended option. Also skips the blind `property-finder`; the planner's own property pass and the mutation check still run. | The design is obvious, or the change is small. |
+| `--fast` | Skips the design debate (advocates and judge) and uses the planner's recommended option. Also skips the blind `property-finder`, except for security-sensitive changes; the planner's own property pass and the mutation check still run. | The design is obvious, or the change is small. |
 | `--auto` | Doesn't stop to confirm the plan's assumptions. Properties that need a product decision become open gaps instead of tests. | You trust the request as written, or you're running unattended. |
 | `--no-properties` | Skips property discovery, property tests, the mutation check and the `INVARIANTS.md` update. Existing invariants are still read and reviewed against. | Wording, styling or config changes with no logic. (The planner also exempts these on its own.) |
 | `--draft` | Pushes the branch and opens the PR as a draft. Without it, the PR is opened ready for review. | You want CI to run and teammates to see the work before it asks for review. |
@@ -82,9 +86,11 @@ Passing tests only show that the cases someone wrote down work. The pipeline als
 
 1. **Discovery.** The planner reads `PROPERTY-DISCOVERY.md`, works through its checklist of property patterns (state-machine model, nothing lost, round-trip, rejected means no effect, consistency between two views, …) and lists candidates in `PLAN.md`. Then `property-finder` makes its own list without seeing the planner's, and the orchestrator merges the two. Each candidate is marked **test**, **covered** (by a named existing test), **reject** (with a reason) or **ask**. An **ask** depends on a product decision, so it goes to you in the assumptions check-in rather than being guessed.
 2. **Property tests.** The test-writer writes a property-based test for each **test** row, using the library `detect-stack` found (fast-check, Hypothesis, proptest, jqwik, …). fast-check is used only in unit tests, never in integration or end-to-end tests; a property that needs the app is extracted into a pure function, or covered by example tests at that level. If the repo has none, the plan proposes adding one, and you can decline it at the check-in.
-3. **Mutation check.** After the tests go green, the `mutator` breaks the code once per criterion and property (flip a condition, drop a field, skip a write), checks that a test fails, and restores the code. If a mutation survives, the test-writer adds a test that catches it.
+3. **Mutation check.** After the tests go green, the `mutator` breaks the code once per criterion and property (flip a condition, drop a field, skip a write, loosen a strict check), checks that a test fails, and restores the code. It also tries to evade guard tests such as source scans and import checks (code after a `//` inside a string, another import path, aliasing). If a mutation or evasion survives, the test-writer adds a test or strengthens the guard.
+   Mutation testing can only weaken checks that exist. It can't notice strictness that was never written (an input the code never validates), so a high score says the written code is tested, not that it's secure.
 4. **No weakened tests.** The orchestrator rejects test diffs that delete tests or assertions, add skip/only markers, or lower property run counts. A hook stops the implementer and the mutator from editing tests at all.
-5. **The registry grows.** After the run, lasting properties are added to `INVARIANTS.md` with the tests that guard them, so the next run starts from them. The pipeline adds rows but never removes or weakens one; it proposes those changes in its report instead.
+5. **Rejected isn't dropped.** A rejected property must cite the code, doc or test that justifies it. One rejected because a caller owns it becomes an *obligation on callers*: written into the function's doc comment, listed in the PR, and recorded in `INVARIANTS.md`.
+6. **The registry grows.** After the run, lasting properties and caller obligations are added to `INVARIANTS.md` with the tests that guard them, so the next run starts from them. The pipeline adds rows but never removes or weakens one; it proposes those changes in its report instead.
 
 Both files live in `.claude/pipeline/verification/` in your repo:
 
@@ -99,23 +105,44 @@ Both files live in `.claude/pipeline/verification/` in your repo:
 ```
 
 - **Never checked in.** Like the rest of `.claude/pipeline/`, the folder is listed in your clone's `info/exclude`. Your repo and its `.gitignore` aren't touched. The PR body carries the property table and mutation results for reviewers.
-- **Seeded once, then yours.** On the first run, the pipeline copies generic versions from the plugin. Add your codebase's own patterns and examples to `PROPERTY-DISCOVERY.md`; later runs use your copy and never overwrite it.
+- **Seeded once, then yours.** On the first run, the pipeline copies generic versions from the plugin. Add your codebase's own patterns and examples to `PROPERTY-DISCOVERY.md`; later runs use your copy and never overwrite it. When a plugin update brings new patterns, the pipeline says so and offers to add the missing sections to your copy, leaving your text alone; agents also read the plugin's copy in the meantime.
 - **Per clone.** Since it isn't committed, each clone has its own registry. To share one across a team, copy the files somewhere you choose; if a repo already commits its own invariant docs (for example `docs/verification/INVARIANTS.md` or rules in `AGENTS.md`), every agent reads them as well, but the pipeline never edits them.
 - **Worktrees** share the main checkout's folder through a symlink, so rows added in any worktree land in one place.
+
+### Security-sensitive changes
+
+The planner starts `PLAN.md` with `Security-sensitive: yes — <why>` when the change touches auth, sessions, crypto, secrets, money, identity verification, permissions or another trust boundary (the orchestrator can also set it). That switches on:
+
+- **Trust-boundary property patterns** from `PROPERTY-DISCOVERY.md`: hostile and out-of-domain input (wrong runtime types, `NaN`, `1e300`, future timestamps, corrupt rows), domain separation and replay, the attacker's total budget when functions compose, and faults vs refusals vs corruption. For this code the generators must reach states the app normally can't.
+- **A failure classification** in the plan: each failure is a caller fault, a server/config fault or corrupt data, with its outcome and whether it's reversible. Caller and server faults may not destroy user-owned state. "Fail closed" means deny now, not lock or delete.
+- **Evidence for every dismissal.** An accepted risk or rejected property that doesn't cite code, docs or a test becomes an open question.
+- **Strict oracles.** Reference models in property tests are written from the spec (`=== true`, exact types), never copied from the code's shape.
+- **The `property-finder` runs even with `--fast`.**
+- **A red-team `security-reviewer`** runs in parallel with the reviewer and tries to break the code. Neither accepts "it's validated elsewhere" for an exported trust-boundary function: a missing local defence is must-fix.
+- **No ready PR with open security findings.** After two fix rounds, any finding still open makes the pipeline ask you, or with `--auto` open a draft with the findings at the top.
+
+Every run, security-sensitive or not, also lists local conventions from neighbouring code (for example, closed schema objects) as constraints, writes an "Obligations on callers" section when a module is built ahead of its caller, and keeps bounds that are checked in two places in one shared constant.
+
+### Branch hygiene
+
+- **Preflight** checks whether HEAD is the default branch tip. If not, it lists the commits that would ride along and asks whether to start from the default branch instead (with `--auto`, it keeps them and warns).
+- **Before the PR**, it compares every file in the diff against the default branch with the plan's "Affected code", asks about anything outside it, and lists what stays under "Changes outside the plan" in the PR body.
+- **Hooks are never skipped.** The `guard-git.sh` hook blocks `--no-verify`, `git commit -n`, `core.hooksPath` overrides and `HUSKY=0`/`SKIP=` on commit or push, for pipeline subagents and for the main session while it's on a `pipeline/*` branch. If you really need to bypass a hook, run the command yourself in a terminal.
 
 To open a PR it needs `gh` installed and authenticated (`gh auth login`). Without it, the pipeline prints the branch and PR body instead.
 
 ## Requirements
 
 - Claude Code 2.1.292+ (for `plugin install --marketplace`)
-- git, and `jq` or `python3` for the guard hook (stock macOS has both)
+- git, and `jq` or `python3` for the guard hooks (stock macOS has both)
 
 ## Develop
 
 ```bash
 claude plugin validate . --strict
 claude --plugin-dir .          # try it without installing
-bash tests/guard-tests.test.sh # hook tests
+bash tests/guard-tests.test.sh # test-file guard hook tests
+bash tests/guard-git.test.sh   # git-hook bypass guard tests
 ```
 
 ## License

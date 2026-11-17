@@ -1,11 +1,11 @@
 {
   "name": "agent-pipeline",
   "displayName": "Agent Pipeline",
-  "version": "0.4.1",
-  "description": "One command from feature request to PR: stack detection, planning, property discovery, design debate, tests-first with one model, implementation with another (barred from editing tests), mutation check, independent review.",
+  "version": "0.5.0",
+  "description": "One command from feature request to PR: stack detection, planning, property discovery, design debate, tests-first with one model, implementation with another (barred from editing tests), mutation check, independent review, and a red-team security review for security-sensitive changes.",
   "author": { "name": "Doug Patterson", "url": "https://github.com/doug-patterson" },
   "homepage": "https://github.com/doug-patterson/agent-pipeline",
   "repository": "https://github.com/doug-patterson/agent-pipeline",
   "license": "MIT",
-  "keywords": ["tdd", "multi-agent", "subagents", "workflow", "pull-request", "property-testing", "mutation-testing"]
+  "keywords": ["tdd", "multi-agent", "subagents", "workflow", "pull-request", "property-testing", "mutation-testing", "security-review"]
 }

@@ -1,5 +1,5 @@
 {
-  "description": "agent-pipeline: stop the implementer and mutator subagents from editing test files.",
+  "description": "agent-pipeline: stop the implementer and mutator subagents from editing test files, and stop pipeline runs from bypassing git hooks.",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,6 +8,16 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-tests.sh\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-git.sh\"",
             "timeout": 10
           }
         ]
