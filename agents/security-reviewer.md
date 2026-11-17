@@ -24,3 +24,5 @@ For every exported function on the trust boundary, attack it along each of these
 You may run throwaway probes to confirm a finding, such as `node -e`, `python3 -c` or the repo's test runner on a single file, importing the code from the repo. Put any probe file in a temporary directory outside the repo (`mktemp -d`), never inside it. Don't edit, commit, stash or switch branches; finish with `git status --porcelain` empty apart from git-ignored files.
 
 Reply as a list of findings, each written as `[must-fix|should-fix|nit] [security|correctness|tests|docs|cosmetic] file:line: attack (concrete input or sequence) → effect → suggested fix`, most severe first. "Defended elsewhere" never lowers the severity of a missing local defence. Then the lines you checked and found sound, one line each. End with `APPROVE` if there are no must-fix items, else `CHANGES-REQUESTED`.
+
+The orchestrator checks every finding before it's fixed: a behavioural one must be reproduced as a failing test, and a static one is checked against the cited line. A finding without a concrete trigger or an exact `file:line` is likely to be dropped as unconfirmed, so give both.

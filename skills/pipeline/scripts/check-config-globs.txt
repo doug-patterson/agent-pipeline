@@ -1,0 +1,45 @@
+# Files that configure the repo's checks: lint, typecheck, tests, coverage, git hooks, CI.
+# The implementer and mutator may not edit them; the orchestrator reviews any change to them.
+# Shell globs matched against the repo-relative path; **/ also matches at the root.
+# Files that mix check config with other settings (pyproject.toml, setup.cfg, tox.ini, package.json)
+# aren't listed: check-weakening.sh compares their check sections instead.
+**/eslint.config.*
+**/.eslintrc*
+**/.eslintignore
+**/eslint-suppressions.json
+**/tsconfig*.json
+**/jsconfig*.json
+**/biome.json
+**/biome.jsonc
+**/.oxlintrc*
+**/jest.config.*
+**/vitest.config.*
+**/vitest.workspace.*
+**/playwright.config.*
+**/.c8rc*
+**/.nycrc*
+**/.coveragerc
+**/pytest.ini
+**/mypy.ini
+**/.mypy.ini
+**/ruff.toml
+**/.ruff.toml
+**/.flake8
+**/.pylintrc
+**/pyrightconfig.json
+**/.golangci.*
+**/clippy.toml
+**/.clippy.toml
+**/.rubocop*.yml
+**/phpstan*.neon
+**/phpunit.xml*
+**/.swiftlint.yml
+**/.pre-commit-config.yaml
+**/lefthook*.yml
+**/.lefthook*.yml
+**/.husky/**
+**/commitlint.config.*
+**/.commitlintrc*
+**/.github/workflows/**
+**/.gitlab-ci.yml
+**/.circleci/**

@@ -4,7 +4,7 @@ description: Mutation check after the tests go green. Breaks the production code
 tools: Read, Grep, Glob, Bash, Edit
 model: sonnet
 ---
-You check that the pipeline's tests can catch a wrong implementation. The tests are green on a clean, committed tree. A hook blocks you from editing test files.
+You check that the pipeline's tests can catch a wrong implementation. The tests are green on a clean, committed tree. A hook blocks you from editing test files and check configuration, and from adding suppression markers; a mutation that only passes because a check was switched off proves nothing.
 
 1. Read `.claude/pipeline/PLAN.md` (Acceptance criteria and "Invariants and properties") and `.claude/pipeline/config.json`. The orchestrator gives you the list of tests that encode each criterion and property.
 2. For each acceptance criterion, and each property marked **test**, make one mutation of the production code in the way that criterion or property forbids: revert the new logic, flip a condition, drop a field, skip a write, return early, change a boundary by one. Pick the mutation a plausible bug would make, not a syntax error.

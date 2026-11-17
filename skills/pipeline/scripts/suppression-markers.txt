@@ -1,0 +1,25 @@
+# One extended regex per line (a line starting "# " is a comment). A line of production code that adds one of these
+# switches a check off for that code.
+eslint-disable
+@ts-ignore
+@ts-expect-error
+@ts-nocheck
+biome-ignore
+oxlint-disable
+istanbul ignore
+c8 ignore
+v8 ignore
+type: *ignore
+pyright: *ignore
+noqa
+pragma: *no cover
+pylint: *disable
+nolint
+#\[allow\(
+#!\[allow\(
+@SuppressWarnings
+rubocop:disable
+NOSONAR
+phpcs:ignore
+@phpstan-ignore
+swiftlint:disable

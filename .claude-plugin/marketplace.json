@@ -6,7 +6,7 @@
     {
       "name": "agent-pipeline",
       "source": "./",
-      "description": "Plan → debate → failing tests → implement → review → PR, with separate models per stage.",
+      "description": "Plan → debate → failing tests → implement → evaluate → review → PR → land, with separate models per stage.",
       "category": "development"
     }
   ]
