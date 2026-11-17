@@ -62,11 +62,12 @@ Put flags anywhere in the request. Combine them freely.
 | `--auto` | Never stops for you. Doesn't confirm the plan's assumptions (properties that need a product decision become open gaps instead of tests); runs in a new worktree if your checkout has uncommitted changes; has the judge rule on disputed tests; keeps prior commits and reverts its own out-of-plan edits. Anything it couldn't settle goes under "Needs a human" at the top of the PR. | You trust the request as written, or you're running unattended. |
 | `--no-properties` | Skips property discovery, property tests, the mutation check and the `INVARIANTS.md` update. Existing invariants are still read and reviewed against. | Wording, styling or config changes with no logic. (The planner also exempts these on its own.) |
 | `--no-eval` | Skips exercising the running system. | The app can't run locally, or the change has no runtime surface. (Libraries skip it on their own.) |
-| `--base <branch>` | Starts the run from the tip of `<branch>` and opens the PR against it, instead of the default branch. The branch must already exist; to open a PR it must be on the remote. | Targeting a release branch, or stacking on another feature branch. |
+| `--base <branch>` | Starts the run from the tip of `<branch>` and opens the PR against it, instead of the default branch. The branch must already exist; to open a PR it must be on the remote. If the branch is the head of an open PR, the run is stacked on it and landing keeps it in sync (see [Stacked PRs](#stacked-prs)). | Targeting a release branch, or stacking on another feature branch. |
 | `--draft` | Pushes the branch and opens the PR as a draft. Without it, the PR is opened ready for review. | You want CI to run and teammates to see the work before it asks for review. |
 | `--no-pr` | Stops at a committed local branch and prints the PR description. Nothing is pushed. Takes precedence over `--draft`, and implies `--no-land`. | You want to look before anything leaves your machine. |
 | `--no-land` | Stops once the PR is open, without watching CI or answering review bots. | You'd rather drive the PR yourself, or the repo has another bot doing it. |
-| `--resume [slug]` | Continues an unfinished run from its last completed stage. With one unfinished run, the slug is optional. | The session crashed, compacted badly or was closed mid-run. |
+| `--keep-auto-fix` | Leaves the Claude desktop app's Auto-fix switch as it is. By default, landing turns it off for the session running the pipeline (see [Desktop app Auto-fix](#desktop-app-auto-fix)). | You want the app to keep answering comments on this PR alongside, or instead of, re-landing with `--resume`. |
+| `--resume [slug]` | Continues an unfinished run from its last completed stage. With one unfinished run, the slug is optional. On a finished run whose PR is still open, re-runs only the landing loop. | The session crashed, compacted badly or was closed mid-run; or a finished PR got new comments, or its stacked parent changed or merged. |
 
 Examples:
 
@@ -160,6 +161,38 @@ Opening a PR is not the same as getting it merged. After `gh pr create`, the pip
 3. **Review comments.** Comments from review bots are verified like any finding, fixed if confirmed, and answered in their thread with the fixing commit or the evidence. A person's request for a specific change is handled the same way; a person's question or design point is left for you.
 
 It never merges, enables auto-merge, approves, dismisses a review or resolves a person's thread. The final report says whether the PR is mergeable and what it's waiting on.
+
+Landing stops once the PR is mergeable. To pick it up again later (new review comments, or a stacked parent that changed or merged), run `/agent-pipeline:pipeline --resume <slug>`: on a finished run whose PR is still open, it re-runs only the landing loop.
+
+If another tool also answers review comments on the same PR, use one or the other for a given PR, or turn the other on only after landing stops. Otherwise both reply to, and try to fix, the same comment. For the Claude desktop app's Auto-fix the pipeline does this for you; see the next section.
+
+### Desktop app Auto-fix
+
+In the Claude desktop app, a session bound to a PR can have **Auto-fix** on: the app wakes the session on CI failures, conflicts and review comments, and that session answers them, without the pipeline's rules (verifying findings, the test and check guards, handing comments to a stacked parent). Running that alongside the landing loop means two agents fixing the same comment.
+
+So **by default, landing turns Auto-fix off** for the session running the pipeline:
+
+- When the PR is open, the pipeline checks the session's PR monitor. If Auto-fix is on, it turns it off and says so. If the app hasn't picked up the PR yet, it checks again at the start of each round.
+- The app may ask you to approve the change (it doesn't in auto mode). If you decline, the pipeline notes "left on" and carries on.
+- Landing never turns Auto-fix back on. When landing stops, nothing answers new review comments on that PR until you re-land it with `/agent-pipeline:pipeline --resume <slug>`. The final report says so.
+- It can only change its own session. If another session has Auto-fix on for the same PR (for example the one you used to open a stacked parent), the pipeline lists it under "Needs a human" for you to turn one off.
+- Outside the desktop app (the terminal CLI, an IDE) the tools don't exist and this step is skipped.
+- With `--no-land` or `--no-pr` there's no landing, so the switch is left alone.
+
+Pass `--keep-auto-fix` to leave the switch as it is. The run state records what happened (`auto_fix`: turned-off, already-off, left-on, kept, not-bound or not-available).
+
+### Stacked PRs
+
+Run the parent first, then start the child with `--base <parent branch>`. Preflight sees that the branch is the head of an open PR and records the stack. From then on the child's landing loop:
+
+- **Waits for the parent.** All runs keep their state in the main checkout, so the child can see when the parent is mid-round and about to push. It waits (up to 30 minutes) for that round to finish before answering its own comments.
+- **Syncs every round.** Whenever the parent's branch has moved, it merges it into the child, even when GitHub doesn't report a conflict, and re-runs the tests.
+- **Hands back comments on the parent's code.** A reviewer on the child may comment on lines the parent wrote. The child replies that the fix belongs in the parent and adds the comment to the parent run's inbox, which the parent's next landing round handles like its own comment.
+- **Follows the parent's merge.** When the parent merges (squash merges included), the child merges the parent's final tip and the new base, retargets its PR to that base, and checks its diff is back to its own files.
+
+Branches are only ever merged, never rebased or force-pushed. The parent's run doesn't need to know about its children, except to answer handed-back comments, which it picks up on its next landing round (re-land it with `--resume` if it had already finished). A parent PR opened by hand works too; the child then doesn't wait, and lists handed-back comments for you.
+
+In the desktop app, each run turns off Auto-fix only for its own session and PR (see [Desktop app Auto-fix](#desktop-app-auto-fix)). If you're watching the parent with Auto-fix in some other session, turn it off there yourself, or the parent's handed-back comments get answered twice.
 
 ### Resuming a run
 
