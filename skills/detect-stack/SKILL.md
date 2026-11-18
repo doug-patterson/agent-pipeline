@@ -36,7 +36,7 @@ Run the test command once to confirm it works and record the baseline (passing, 
   "test_globs": ["**/*.test.ts", "**/*.spec.ts", "**/__tests__/**", "tests/**", "test/**"],
   "property_lib": "fast-check",
   "default_branch": "main",
-  "config_version": 2,
+  "config_version": 3,
   "run": {
     "setup": "docker compose up -d postgres redis",
     "start": "pnpm dev",
@@ -47,6 +47,10 @@ Run the test command once to confirm it works and record the baseline (passing, 
     "notes": "Needs Docker. Seed with pnpm seed for a user to log in as."
   },
   "check_config_globs": ["tools/eslint-rules/**"],
+  "generated": [
+    {"paths": ["src/db/types/**", "generated/schema.json"], "command": "pnpm db:codegen", "needs": "Postgres running (docker compose up -d postgres)"}
+  ],
+  "shared_docs_dir": null,
   "commit_convention": {
     "source": "commitlint.config.mjs",
     "format": "type(scope): subject",
@@ -71,8 +75,10 @@ Rules:
 - Use `null` for any command that doesn't exist. Never invent one.
 - `test_globs` must match every existing test file and fixture directory. The implement-phase guard hook uses these globs to block test edits, so missing a pattern weakens the guard. Include fixture directories (`testdata/`, `fixtures/`).
 - `property_lib` is the property-based testing library the repo already depends on (fast-check, Hypothesis, proptest, quickcheck, jqwik, rapid, gopter, …), or `null`. Look in the manifests and lockfiles; don't install one.
-- `config_version` is `2`. The pipeline re-runs this skill when it's missing or lower, so keep any value you can't detect from the older file rather than dropping it.
+- `config_version` is `3`. The pipeline re-runs this skill when it's missing or lower, so keep any value you can't detect from the older file rather than dropping it.
 - `run` says how to start the system for the evaluator: a command that starts it in the foreground (`start`), how to tell it's ready (`ready`: a URL or a command), and anything that must run first (`setup`). Use `null` for the whole block when the repo is a library or has nothing to run, and put what's missing (Docker, a secret, a device) in `notes` when it can't run here. Don't start it now.
+- `generated` lists files a tool produces and the repo's command that regenerates them (codegen from a schema or database, generated types, schema or API dumps, compiled translations), with what the command needs to run. Look in the package scripts, task runners, CI and the guidance docs. Lockfiles don't need listing; the pipeline always regenerates them with the package manager. Use `[]` if there are none. The pipeline never hand-writes these files.
+- `shared_docs_dir` is always `null` when detected. A user can set it to a folder in the repo (for example `docs/decisions`) to have each run commit its decisions, caller obligations and invariants there for the team; keep any value an older config.json has.
 - `check_config_globs` lists repo-specific files that configure checks beyond the plugin's built-in list (custom lint rules, a coverage thresholds file, a shared config package). Use `[]` if there are none.
 - `commit_convention` describes what the repo's commit hook enforces, from its config, not from guesses. Use `null` if nothing enforces one.
 - `pr_template` is the path of the PR template GitHub would use for a new PR, or `null`.

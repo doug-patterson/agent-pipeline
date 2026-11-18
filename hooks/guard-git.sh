@@ -2,7 +2,8 @@
 # PreToolUse guard (Bash): during an agent-pipeline run, never bypass the repo's git hooks.
 # Applies to agent-pipeline subagents, and to the main session while the repo is on a pipeline/* branch.
 # Blocks: --no-verify on any git command, `git commit -n`, core.hooksPath overrides,
-# and hook-silencing env vars (HUSKY=0, HUSKY_SKIP_HOOKS, SKIP= for pre-commit) on git commit/push.
+# and hook-silencing env vars (HUSKY=0, HUSKY_SKIP_HOOKS, SKIP= for pre-commit, LEFTHOOK=0, LEFTHOOK_EXCLUDE=)
+# on git commit/push. Git accepts any unambiguous prefix of a long option, so --no-verif and --no-veri count too.
 # Exit 0 = allow. Exit 2 + stderr = block (Claude sees the reason).
 # Works with bash 3.2 (stock macOS). Parses JSON with jq, falling back to python3.
 
@@ -58,8 +59,8 @@ block() {
 if [ "$parsed" = 0 ]; then
   # No JSON parser: a crude substring check on the raw text, so the obvious bypasses are still caught.
   case "$cmd" in
-    *--no-verify*) block "--no-verify" ;;
-    *core.hooksPath=*|*HUSKY=0*) block "hook override" ;;
+    *--no-veri*) block "--no-verify" ;;
+    *core.hooksPath=*|*HUSKY=0*|*LEFTHOOK=0*|*LEFTHOOK=false*|*LEFTHOOK_EXCLUDE=*) block "hook override" ;;
   esac
   exit 0
 fi
@@ -97,8 +98,8 @@ for tok in $cmd; do
   case "$word" in
     *$HP=*) block "core.hooksPath override" ;;
     *$HP) [ "$ends_cmd" = 0 ] && hooks_key=1 ;;
-    --no-verify|--no-verify=*) block "--no-verify" ;;
-    HUSKY=0|HUSKY=false|HUSKY_SKIP_HOOKS=*) env_bypass="$word" ;;
+    --no-veri|--no-verif|--no-verify|--no-verify=*) block "--no-verify" ;;
+    HUSKY=0|HUSKY=false|HUSKY_SKIP_HOOKS=*|LEFTHOOK=0|LEFTHOOK=false|LEFTHOOK_EXCLUDE=?*) env_bypass="$word" ;;
     SKIP=?*) env_bypass="$word" ;;
     git|*/git) saw_git=1; in_commit=0 ;;
     commit) [ "$saw_git" = 1 ] && { in_commit=1; commit_or_push=1; } ;;
